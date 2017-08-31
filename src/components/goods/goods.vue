@@ -1,10 +1,11 @@
 <template>
+<div>
   <div class= "goods">
     <div class="menu-wrapper" ref="menuWrapper">
       <ul>
         <li v-for="(item, index) in goods" :key="item.id" class="menu-item border-1px" :class="{'current':currentIndex===index}"
-        @click="selectMenu(index, $event)">
-          <span class="text">
+        @click="selectMenu(index, $event)" ref="menuList">
+          <span class="text border-1px">
             <span v-show="item.type > 0" class="icon" :class="classMap[item.type]"></span>{{item.name}}
           </span>
         </li>
@@ -12,26 +13,26 @@
     </div>
     <div class="foods-wrapper" ref="foodsWrapper">
       <ul>
-        <li v-for="item in goods" :key="item" class="food-list food-list-hook">
+        <li v-for="item in goods" :key="item" class="food-list" ref="foodList">
           <h1 class="title">{{item.name}}</h1>
           <ul>
-            <li v-for="food in item.foods" :key="food" class="food-item border-1px">
+            <li @click="selectFood(food,$event)" v-for="food in item.foods" :key="food" class="food-item border-1px">
               <div class="icon">
-                <img width="57" height="57" :src="food.icon">
+                <img width="57" sheight="57" :src="food.icon">
               </div>
               <div class="content">
                 <h2 class="name">{{food.name}}</h2>
                 <p class="desc">{{food.description}}</p>
                 <div class="extra">
                   <span class="count">月售{{food.sellCount}}份</span>
-                  <span class="count">好评率{{food.rating}}%</span>
+                  <span>好评率{{food.rating}}%</span>
                 </div>
                 <div class="price">
                   <span class="now">￥{{food.price}}</span>
                   <span class="old" v-show="food.oldPrice">￥{{food.oldPrice}}</span>
                 </div>
                 <div class="cartconcontrol-wrapper">
-                  <cartconcontrol :food="food" @add="addFood"></cartconcontrol>
+                  <cartconcontrol @add="addFood" :food="food"></cartconcontrol>
                 </div>
               </div>
             </li>
@@ -39,14 +40,17 @@
         </li>
       </ul>
     </div>
-    <shopcart ref="shopcart" :select-foods="selectFoods" :delivery-price="seller.deliveryPrice" :min-price="seller.minPrice"></shopcart>
+    <shopcart ref="shopcart" :selectFoods="selectFoods" :deliveryPrice="seller.deliveryPrice" :minPrice="seller.minPrice"></shopcart>
   </div>
+  <food @food="addFood" :food="selectedFood" ref="myFood"></food>
+</div>
 </template>
 
 <script>
   import BScroll from 'better-scroll'
   import shopcart from '../shopcart/shopcart.vue'
   import cartconcontrol from '../cartconcontrol/cartconcontrol.vue'
+  import food from '../food/food.vue'
 
   const ERR_OK = 0
 
@@ -60,7 +64,8 @@
       return {
         goods: [],
         listHeight: [],
-        scrollY: 0
+        scrollY: 0,
+        selectedFood: {}
       }
     },
     computed: {
@@ -69,6 +74,7 @@
           let height1 = this.listHeight[i]
           let height2 = this.listHeight[i + 1]
           if (!height2 || (this.scrollY >= height1 && this.scrollY < height2)) {
+            // this._followScroll(i)
             return i
           }
         }
@@ -78,7 +84,7 @@
         let foods = []
         this.goods.forEach((good) => {
           good.foods.forEach((food) => {
-            if (food.count > 0) {
+            if (food.count) {
               foods.push(food)
             }
           })
@@ -101,6 +107,35 @@
       })
     },
     methods: {
+      selectMenu (index, event) {
+        if (!event._constructed) {
+          // 去掉自带的click事件的点击
+          return
+        }
+        // console.log(index)
+        let foodList = this.$refs.foodList
+        let el = foodList[index]
+        this.foodsScroll.scrollToElement(el, 250)
+        // this.foodsScroll.scrollTo(0, -this.listHeight[index], 300)
+      },
+      selectFood (food, event) {
+        if (!event._constructed) {
+          return
+        }
+        this.selectedFood = food
+        this.$nextTick(() => {
+          this.$refs.myFood.show()
+        })
+      },
+      addFood (target) {
+        this._drop(target)
+      },
+      _drop (target) {
+        // 优化异步执行下落动画
+        this.$nextTick(() => {
+          this.$refs.shopcart.drop(target)
+        })
+      },
       _initScroll () {
         this.meunScroll = new BScroll(this.$refs.menuWrapper, {
           click: true
@@ -118,7 +153,7 @@
         })
       },
       _calculateHeight () {
-        let foodList = this.$refs.foodsWrapper.getElementsByClassName('food-list-hook')
+        let foodList = this.$refs.foodList
         let height = 0
         this.listHeight.push(height)
         for (let i = 0; i < foodList.length; i++) {
@@ -127,29 +162,16 @@
           this.listHeight.push(height)
         }
       },
-      selectMenu (index, event) {
-        if (!event._constructed) {
-          // 去掉自带的click事件的点击
-          return
-        }
-        // console.log(index)
-        let foodList = this.$refs.foodsWrapper.getElementsByClassName('food-list-hook')
-        let el = foodList[index]
-        this.foodsScroll.scrollToElement(el, 250)
-      },
-      addFood (target) {
-        this._drop(target)
-      },
-      _drop (target) {
-        // 优化异步执行下落动画
-        this.$nextTick(() => {
-          this.$refs.shopcart.drop(target)
-        })
+      _followScroll (index) {
+        let menuList = this.$refs.menuList
+        let el = menuList[index]
+        this.menuScroll.scrollToElement(el, 300, 0, -100)
       }
     },
     components: {
       shopcart,
-      cartconcontrol
+      cartconcontrol,
+      food
     }
   }
 </script>
@@ -234,7 +256,7 @@
       padding-bottom: 18px;
       @include border-1px(rgba(7, 17, 27, 0.1));
       &:last-child{
-        @include border-none;
+        @include border-none();
         margin-bottom: 0;
       }
       .icon{
