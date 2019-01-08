@@ -57,6 +57,7 @@ var webpackConfig = merge(baseWebpackConfig, {
         : config.build.index,
       template: 'index.html',
       inject: true,
+      path: config.dev.assetsPublicPath + config.dev.assetsSubDirectory,
       minify: {
         removeComments: true,
         collapseWhitespace: true,

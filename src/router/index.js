@@ -7,6 +7,7 @@ import seller from '@/components/seller/seller'
 Vue.use(Router)
 
 export default new Router({
+  base: '/demo/ele/',
   mode: 'history',
   linkActiveClass: 'active',
   routes: [
